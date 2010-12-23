@@ -1,0 +1,17 @@
+<?php
+// $Id: simple_spam_filter.module,v0.1  2010/12/23
+
+/**
+ * Implementation of hook_menu().
+ */
+function simple_spam_filter() {
+  $items = array();
+  $items['admin/settings/simple_spam_filter'] = array();
+}
+
+/**
+ * Implementation of hook_form_[form_id]_alter().
+ *
+ */
+function apachesolr_form_node_type_form_alter(&$form, $form_state) {
+}
