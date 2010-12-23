@@ -1,0 +1,5 @@
+; $Id: $
+name = "Simple Spam Filter"
+description = "Add simple spam filtering to any form."
+core = 6.x
+package = "Spam Filter"
