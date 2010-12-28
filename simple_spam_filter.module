@@ -37,7 +37,7 @@ function simple_spam_filter_form_alter(&$form, &$form_state, $form_id) {
   $form_list = variable_get('simple_spam_filter_form_list', array());
   $ip_blacklist = variable_get('simple_spam_filter_ip_blacklist', array());
 
-  if (!empty($ip_blacklist) && in_array($_SERVER['REMOTE_ADDR'], $form_list)) {
+  if (!empty($ip_blacklist) && in_array($_SERVER['REMOTE_ADDR'], $ip_blacklist)) {
     $spam_validate_enabled = true;
     $form['simple_s_filter_identified'] = array(
       '#type' => 'hidden',
@@ -45,7 +45,8 @@ function simple_spam_filter_form_alter(&$form, &$form_state, $form_id) {
     );
   }
   else if (!empty($form_list) && in_array($form_id, $form_list)) {
-    // drupal_add_css(drupal_get_path('module', 'simple_spam_filter') .'/simple_spam_filter.css');
+    $spam_validate_enabled = true;
+    drupal_add_css(drupal_get_path('module', 'simple_spam_filter') .'/simple_spam_filter.css');
     $form['simple_s_filter_field'] = array(
       '#type' => 'textfield',
       '#title' => 'Simple Filter',
