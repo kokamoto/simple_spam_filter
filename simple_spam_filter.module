@@ -39,25 +39,25 @@ function simple_spam_filter_form_alter(&$form, &$form_state, $form_id) {
 
   if (!empty($ip_blacklist) && in_array($_SERVER['REMOTE_ADDR'], $ip_blacklist)) {
     $spam_validate_enabled = true;
-    $form['simple_s_filter_identified'] = array(
+    $form['simple_s_filter_ip_blacklisted'] = array(
       '#type' => 'hidden',
       '#value' => true,
     );
   }
   else if (!empty($form_list) && in_array($form_id, $form_list)) {
     $spam_validate_enabled = true;
-    drupal_add_css(drupal_get_path('module', 'simple_spam_filter') .'/simple_spam_filter.css');
+    // drupal_add_css(drupal_get_path('module', 'simple_spam_filter') .'/simple_spam_filter.css');
     $form['simple_s_filter_field'] = array(
       '#type' => 'textfield',
       '#title' => 'Simple Filter',
       '#prefix' => '<div id="simple_s_filter_div">',
       '#suffix' => '</div>',
-      '#description' => t('This field is for computer-generated email only and should not be visible. If you can see it, please ignore it.'),
+      '#description' => t('This field is for preventing computer-generated submit only and should not be visible. If you can see it, please ignore it.'),
     );
   }
 
   if ($spam_validate_enabled) {
-    array_unshift($form['#validate'], simple_spam_filter_form_validate);
+    $form['#validate'][] = 'simple_spam_filter_form_validate';
   }
 }
 
@@ -65,14 +65,24 @@ function simple_spam_filter_form_alter(&$form, &$form_state, $form_id) {
  * Spam field Validate Hook
  */
 function simple_spam_filter_form_validate($form, &$form_state) {
-  if (
-    $form['simple_s_filter_identified'] ||
-    !empty($form_state['values']['simple_s_filter_field'])
-  ) {
-    $error_message = variable_get('simple_spam_filter_error_message', 'Sorry you failed security check, pat down time!');
-    form_set_error('simple_s_filter_fields', $error_message);
+  if ($form['simple_s_filter_ip_blacklisted']) {
+    $reason = "In IP Blacklist";
+  }
+  else if (!empty($form_state['values']['simple_s_filter_field'])) {
+    $reason = "Filled Filter Field";
+  }
+  else {
+    return;
+  }
+  $error_message = variable_get('simple_spam_filter_error_message', 'Please do not fill in Simple Filter Field. It is for spam detection only.');
+  form_set_error('simple_s_filter_field', $error_message);
+  if (variable_get('simple_spam_filter_logging_enabled', true)) {
+    watchdog('simple_spam_filter', "Spam Detected! Reason: %reason, Post Data: %form_data", array(
+      '%reason' => $reason, '%form_data' => serialize($form_state['values'])
+    ));
   }
 }
+
 
 /**
  * Simple spam filter settings form with config of 
@@ -101,12 +111,28 @@ function simple_spam_filter_settings_form() {
     '#description' => t('Please provide Line separated form names'),
     '#default_value' => variable_get('simple_spam_filter_error_message', NULL),
   );
+  $form['simple_spam_filter_logging_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Check to enable logging (watchdog)'),
+    '#default_value' => variable_get('simple_spam_filter_logging_enabled', TRUE),
+  );
 
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save'),
   );
   return $form;
+}
+
+/**
+ * Simple spam filter settings form submit 
+ */
+function simple_spam_filter_settings_form_submit($form, $form_state) {
+  variable_set('simple_spam_filter_form_list', simple_spam_filter_explode_setting($form_state['values']['simple_spam_filter_form_list']));
+  variable_set('simple_spam_filter_ip_blacklist', simple_spam_filter_explode_setting($form_state['values']['simple_spam_filter_ip_blacklist']));
+  variable_set('simple_spam_filter_error_message', $form_state['values']['simple_spam_filter_error_message']);
+  variable_set('simple_spam_filter_logging_enabled', $form_state['values']['simple_spam_filter_logging_enabled']);
+  drupal_set_message('Simple Spam Filter settings updated.');
 }
 
 /**
@@ -124,14 +150,4 @@ function simple_spam_filter_explode_setting($setting=NULL) {
     }
   }
   return $ret;
-}
-
-/**
- * Simple spam filter settings form submit 
- */
-function simple_spam_filter_settings_form_submit($form, $form_state) {
-  variable_set('simple_spam_filter_form_list', simple_spam_filter_explode_setting($form_state['values']['simple_spam_filter_form_list']));
-  variable_set('simple_spam_filter_ip_blacklist', simple_spam_filter_explode_setting($form_state['values']['simple_spam_filter_ip_blacklist']));
-  variable_set('simple_spam_filter_error_message', $form_state['values']['simple_spam_filter_error_message']);
-  drupal_set_message('Simple Spam Filter settings updated.');
 }
